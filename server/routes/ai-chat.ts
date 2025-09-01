@@ -8,7 +8,7 @@ interface ChatRequestBody {
   max_new_tokens?: number;
 }
 
-const DEFAULT_MODEL = "meta-llama/Llama-3.2-1B-Instruct";
+const DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta";
 
 function buildPrompt(body: ChatRequestBody) {
   const system =
