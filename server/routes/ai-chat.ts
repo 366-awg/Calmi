@@ -74,7 +74,9 @@ export const handleAiChat: RequestHandler = async (req, res) => {
 
     if (!resp.ok) {
       const text = await resp.text();
-      return res.status(resp.status).json({ error: "Upstream HF error", details: text });
+      const reply = buildFallback(body.message);
+      res.setHeader("X-Calmi-Source", "fallback");
+      return res.status(200).json({ reply });
     }
 
     const data = (await resp.json()) as Array<{ generated_text: string }> | any;
@@ -84,14 +86,35 @@ export const handleAiChat: RequestHandler = async (req, res) => {
     } else if (typeof data === "object" && data?.generated_text) {
       reply = String(data.generated_text).trim();
     } else {
-      reply = JSON.stringify(data);
+      reply = typeof data === "string" ? data : JSON.stringify(data);
     }
 
-    // Safety guard: trim overly long replies
     reply = reply.slice(0, 3000);
 
+    if (!reply || reply === "{}") {
+      // Fallback if response is empty
+      reply = buildFallback(body.message);
+      res.setHeader("X-Calmi-Source", "fallback");
+      return res.status(200).json({ reply });
+    }
+
+    res.setHeader("X-Calmi-Source", "hf");
     res.status(200).json({ reply });
   } catch (err: any) {
-    res.status(500).json({ error: "Server error", details: String(err?.message || err) });
+    const message = (req.body as any)?.message || "";
+    const reply = buildFallback(String(message));
+    res.setHeader("X-Calmi-Source", "fallback");
+    res.status(200).json({ reply });
   }
 };
+
+function buildFallback(userText: string) {
+  const t = (userText || "").slice(0, 400);
+  const suggestions = [
+    "Try a 4-7-8 breath: inhale 4, hold 7, exhale 8.",
+    "Notice 5 things you can see, 4 you can touch, 3 you can hear.",
+    "If you're in danger or may harm yourself, contact a local emergency line or a helpline below.",
+  ];
+  const tip = suggestions[Math.floor(Math.random() * suggestions.length)];
+  return `I hear you. ${t ? `You said: “${t}”. ` : ""}You're not alone. Let's take one small step: ${tip}`;
+}
