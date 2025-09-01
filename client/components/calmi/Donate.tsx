@@ -31,18 +31,39 @@ export default function Donate({ defaultEmail = "" }: { defaultEmail?: string })
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (window.PaystackPop) return;
-    if (document.getElementById("paystack-inline-js")) return;
-    const s = document.createElement("script");
-    s.id = "paystack-inline-js";
-    s.src = "https://js.paystack.co/v1/inline.js";
-    s.async = true;
-    s.crossOrigin = "anonymous";
-    s.onerror = () => console.warn("Failed to load Paystack JS");
-    document.body.appendChild(s);
+    let s = document.getElementById("paystack-inline-js") as HTMLScriptElement | null;
+    if (!s) {
+      s = document.createElement("script");
+      s.id = "paystack-inline-js";
+      s.src = "https://js.paystack.co/v1/inline.js";
+      s.async = true;
+      s.crossOrigin = "anonymous";
+      s.onerror = () => console.warn("Failed to load Paystack JS");
+      document.body.appendChild(s);
+    }
   }, []);
 
-  const pay = () => {
-    if (!window.PaystackPop) {
+  function ensurePaystackLoaded(timeoutMs = 8000) {
+    return new Promise<void>((resolve, reject) => {
+      if (typeof window !== "undefined" && window.PaystackPop) return resolve();
+      const started = Date.now();
+      const check = () => {
+        if (window.PaystackPop) return resolve();
+        if (Date.now() - started > timeoutMs) return reject(new Error("Paystack JS not loaded"));
+        setTimeout(check, 150);
+      };
+      const s = document.getElementById("paystack-inline-js") as HTMLScriptElement | null;
+      if (s) {
+        s.addEventListener("load", () => resolve(), { once: true });
+      }
+      check();
+    });
+  }
+
+  const pay = async () => {
+    try {
+      await ensurePaystackLoaded();
+    } catch (e) {
       alert("Payments unavailable: Paystack JS not loaded yet.");
       return;
     }
