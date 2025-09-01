@@ -47,25 +47,34 @@ export const handleAiChat: RequestHandler = async (req, res) => {
 
     const prompt = buildPrompt(body);
 
-    const resp = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          temperature,
-          max_new_tokens,
-          return_full_text: false,
+    async function callOnce() {
+      return fetch(`https://api-inference.huggingface.co/models/${model}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      }),
-    });
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            temperature,
+            max_new_tokens,
+            return_full_text: false,
+          },
+          options: { wait_for_model: true },
+        }),
+      });
+    }
+
+    let resp = await callOnce();
+    if (resp.status === 503) {
+      await new Promise((r) => setTimeout(r, 2500));
+      resp = await callOnce();
+    }
 
     if (!resp.ok) {
       const text = await resp.text();
-      return res.status(502).json({ error: "Upstream HF error", details: text });
+      return res.status(resp.status).json({ error: "Upstream HF error", details: text });
     }
 
     const data = (await resp.json()) as Array<{ generated_text: string }> | any;
