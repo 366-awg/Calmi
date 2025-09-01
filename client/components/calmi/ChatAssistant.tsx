@@ -14,32 +14,44 @@ function useSpeechRecognition() {
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SR) {
-      setSupported(true);
-      const r = new SR();
-      r.continuous = false;
-      r.lang = "en-US";
-      r.interimResults = false;
-      r.onresult = (e: any) => {
-        const transcript = Array.from(e.results).map((r: any) => r[0].transcript).join(" ");
-        (window as any).__calmi_sr_result = transcript;
-      };
-      r.onend = () => setListening(false);
-      recognitionRef.current = r;
+    try {
+      const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SR) {
+        setSupported(true);
+        try {
+          const r = new SR();
+          r.continuous = false;
+          r.lang = "en-US";
+          r.interimResults = false;
+          r.onresult = (e: any) => {
+            const transcript = Array.from(e.results).map((r: any) => r[0].transcript).join(" ");
+            (window as any).__calmi_sr_result = transcript;
+          };
+          r.onend = () => setListening(false);
+          recognitionRef.current = r;
+        } catch (e) {
+          setSupported(false);
+        }
+      }
+    } catch {
+      setSupported(false);
     }
   }, []);
 
   const start = () => {
     if (!recognitionRef.current) return;
-    (window as any).__calmi_sr_result = "";
-    setListening(true);
-    recognitionRef.current.start();
+    try {
+      (window as any).__calmi_sr_result = "";
+      setListening(true);
+      recognitionRef.current.start();
+    } catch {
+      setListening(false);
+    }
   };
 
   const stop = () => {
     if (!recognitionRef.current) return;
-    recognitionRef.current.stop();
+    try { recognitionRef.current.stop(); } catch {}
   };
 
   const getResult = () => (window as any).__calmi_sr_result || "";
