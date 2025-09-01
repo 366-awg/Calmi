@@ -2,7 +2,6 @@ import Header from "@/components/calmi/Header";
 import Footer from "@/components/calmi/Footer";
 import Hero from "@/components/calmi/Hero";
 import ChatAssistant from "@/components/calmi/ChatAssistant";
-import MusicPlayer from "@/components/calmi/MusicPlayer";
 import BreathingExercises from "@/components/calmi/BreathingExercises";
 import Donate from "@/components/calmi/Donate";
 import Hotlines from "@/components/calmi/Hotlines";
@@ -16,7 +15,6 @@ export default function Index() {
         <Hero />
         <div className="grid gap-6">
           <ChatAssistant />
-          <MusicPlayer />
           <BreathingExercises />
           <Donate defaultEmail="annwangare36@gmail.com" />
           <Hotlines />
