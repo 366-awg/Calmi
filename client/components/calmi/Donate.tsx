@@ -28,9 +28,22 @@ export default function Donate({ defaultEmail = "" }: { defaultEmail?: string })
     })();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.PaystackPop) return;
+    if (document.getElementById("paystack-inline-js")) return;
+    const s = document.createElement("script");
+    s.id = "paystack-inline-js";
+    s.src = "https://js.paystack.co/v1/inline.js";
+    s.async = true;
+    s.crossOrigin = "anonymous";
+    s.onerror = () => console.warn("Failed to load Paystack JS");
+    document.body.appendChild(s);
+  }, []);
+
   const pay = () => {
     if (!window.PaystackPop) {
-      alert("Paystack script not loaded yet. Please try again in a moment.");
+      alert("Payments unavailable: Paystack JS not loaded yet.");
       return;
     }
     if (!publicKey) {
