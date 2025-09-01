@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { handleAiChat } from "./routes/ai-chat";
+import { handlePublicConfig } from "./routes/public-config";
+import { verifyPaystack } from "./routes/paystack";
 
 export function createServer() {
   const app = express();
