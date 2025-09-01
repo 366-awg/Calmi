@@ -8,7 +8,7 @@ interface ChatRequestBody {
   max_new_tokens?: number;
 }
 
-const DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta";
+const DEFAULT_MODEL = "gpt2";
 
 function buildPrompt(body: ChatRequestBody) {
   const system =
