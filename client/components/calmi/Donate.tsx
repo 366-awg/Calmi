@@ -7,69 +7,66 @@ declare global {
 }
 
 const DEFAULT_AMOUNTS = [5, 10, 100];
+const PAYSTACK_PUBLIC_KEY = "pk_test_142d9de331100ce1a3d48e9f09e17377e1d3ead0"; // Replace with your actual key
 
 export default function Donate({ defaultEmail = "" }: { defaultEmail?: string }) {
   const [amount, setAmount] = useState<number | "">(10);
   const [email, setEmail] = useState(defaultEmail);
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [isPaystackLoaded, setIsPaystackLoaded] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [publicKey, setPublicKey] = useState<string | null>("pk_test_142d9de331100ce1a3d48e9f09e17377e1d3ead0"); // Replace with your Paystack public key
-
-        if (!j?.paystackPublicKey) {
-          console.warn("Calmi: PAYSTACK_PUBLIC_KEY is not configured on the server.");
-        }
-      } catch (e) {
-        console.warn("Failed to load public config", e);
-      }
-    })();
+    // Set public key (you might want to fetch this from your server instead)
+    setPublicKey(PAYSTACK_PUBLIC_KEY);
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.PaystackPop) return;
-    let s = document.getElementById("paystack-inline-js") as HTMLScriptElement | null;
-    if (!s) {
-      s = document.createElement("script");
-      s.id = "paystack-inline-js";
-      s.src = "https://js.paystack.co/v1/inline.js";
-      s.async = true;
-      s.crossOrigin = "anonymous";
-      s.onerror = () => console.warn("Failed to load Paystack JS");
-      document.body.appendChild(s);
+    
+    // Check if already loaded
+    if (window.PaystackPop) {
+      setIsPaystackLoaded(true);
+      return;
+    }
+
+    // Check if script is already added
+    let script = document.getElementById("paystack-inline-js") as HTMLScriptElement | null;
+    
+    if (!script) {
+      // Load Paystack script
+      script = document.createElement("script");
+      script.id = "paystack-inline-js";
+      script.src = "https://js.paystack.co/v1/inline.js";
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      
+      script.onload = () => {
+        setIsPaystackLoaded(true);
+        console.log("Paystack JS loaded successfully");
+      };
+      
+      script.onerror = () => {
+        console.warn("Failed to load Paystack JS");
+        setIsPaystackLoaded(false);
+      };
+      
+      document.body.appendChild(script);
+    } else if (window.PaystackPop) {
+      setIsPaystackLoaded(true);
     }
   }, []);
 
-  function ensurePaystackLoaded(timeoutMs = 8000) {
-    return new Promise<void>((resolve, reject) => {
-      if (typeof window !== "undefined" && window.PaystackPop) return resolve();
-      const started = Date.now();
-      const check = () => {
-        if (window.PaystackPop) return resolve();
-        if (Date.now() - started > timeoutMs) return reject(new Error("Paystack JS not loaded"));
-        setTimeout(check, 150);
-      };
-      const s = document.getElementById("paystack-inline-js") as HTMLScriptElement | null;
-      if (s) {
-        s.addEventListener("load", () => resolve(), { once: true });
-      }
-      check();
-    });
-  }
-
   const pay = async () => {
-    try {
-      await ensurePaystackLoaded();
-    } catch (e) {
+    if (!isPaystackLoaded) {
       alert("Payments unavailable: Paystack JS not loaded yet.");
       return;
     }
+
     if (!publicKey) {
-      alert("Payments are temporarily unavailable. (Server missing PAYSTACK_PUBLIC_KEY)");
+      alert("Payments are temporarily unavailable. (Missing PAYSTACK_PUBLIC_KEY)");
       return;
     }
+
     const cents = Math.round(Number(amount || 0) * 100);
     if (!cents) {
       alert("Enter a valid amount.");
@@ -100,6 +97,7 @@ export default function Donate({ defaultEmail = "" }: { defaultEmail?: string })
       },
       onClose: function () {},
     });
+    
     handler.openIframe();
   };
 
@@ -112,21 +110,52 @@ export default function Donate({ defaultEmail = "" }: { defaultEmail?: string })
           <label className="text-sm">Amount (USD)</label>
           <div className="flex gap-2 mt-1">
             {DEFAULT_AMOUNTS.map((a) => (
-              <button key={a} onClick={() => setAmount(a)} className={`px-3 py-2 rounded-lg border hover:bg-secondary ${amount === a ? "bg-secondary" : ""}`}>${a}</button>
+              <button 
+                key={a} 
+                onClick={() => setAmount(a)} 
+                className={`px-3 py-2 rounded-lg border hover:bg-secondary ${amount === a ? "bg-secondary" : ""}`}
+              >
+                ${a}
+              </button>
             ))}
           </div>
-          <input type="number" min={1} className="mt-2 w-full px-3 py-2 rounded-lg border bg-background" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+          <input 
+            type="number" 
+            min={1} 
+            className="mt-2 w-full px-3 py-2 rounded-lg border bg-background" 
+            value={amount} 
+            onChange={(e) => setAmount(Number(e.target.value))} 
+          />
         </div>
         <div>
           <label className="text-sm">Email (for receipt)</label>
-          <input type="email" className="mt-1 w-full px-3 py-2 rounded-lg border bg-background" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          <input 
+            type="email" 
+            className="mt-1 w-full px-3 py-2 rounded-lg border bg-background" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            placeholder="you@example.com" 
+          />
         </div>
         <div className="flex gap-2 md:justify-end">
-          <button onClick={pay} disabled={!publicKey} className={`h-10 px-4 rounded-lg text-white ${publicKey ? "bg-primary hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}>Donate</button>
+          <button 
+            onClick={pay} 
+            disabled={!publicKey || !isPaystackLoaded} 
+            className={`h-10 px-4 rounded-lg text-white ${(publicKey && isPaystackLoaded) ? "bg-primary hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}
+          >
+            Donate
+          </button>
         </div>
       </div>
       {!publicKey && (
-        <p className="mt-3 text-xs text-muted-foreground">Payments unavailable: server is missing PAYSTACK_PUBLIC_KEY. Developer action required.</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Payments unavailable: server is missing PAYSTACK_PUBLIC_KEY. Developer action required.
+        </p>
+      )}
+      {publicKey && !isPaystackLoaded && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Loading payment system...
+        </p>
       )}
     </section>
   );
