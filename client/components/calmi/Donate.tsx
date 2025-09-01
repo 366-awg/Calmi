@@ -1,8 +1,4 @@
-import { useMemo, useState } from "react";
-
-const PAYSTACK_KEY_STORAGE = "calmi_paystack_public_key";
-
-const DEFAULT_AMOUNTS = [5, 10, 100];
+import { useEffect, useState } from "react";
 
 declare global {
   interface Window {
@@ -10,20 +6,35 @@ declare global {
   }
 }
 
+const DEFAULT_AMOUNTS = [5, 10, 100];
+
 export default function Donate({ defaultEmail = "" }: { defaultEmail?: string }) {
-  const [key, setKey] = useState<string>(() => localStorage.getItem(PAYSTACK_KEY_STORAGE) || "");
   const [amount, setAmount] = useState<number | "">(10);
   const [email, setEmail] = useState(defaultEmail);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
 
-  const save = () => localStorage.setItem(PAYSTACK_KEY_STORAGE, key.trim());
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/public-config");
+        const j = await r.json();
+        setPublicKey(j?.paystackPublicKey || null);
+        if (!j?.paystackPublicKey) {
+          console.warn("Calmi: PAYSTACK_PUBLIC_KEY is not configured on the server.");
+        }
+      } catch (e) {
+        console.warn("Failed to load public config", e);
+      }
+    })();
+  }, []);
 
   const pay = () => {
     if (!window.PaystackPop) {
       alert("Paystack script not loaded yet. Please try again in a moment.");
       return;
     }
-    if (!key) {
-      alert("Please add your Paystack public key.");
+    if (!publicKey) {
+      alert("Payments are temporarily unavailable. (Server missing PAYSTACK_PUBLIC_KEY)");
       return;
     }
     const cents = Math.round(Number(amount || 0) * 100);
@@ -33,16 +44,28 @@ export default function Donate({ defaultEmail = "" }: { defaultEmail?: string })
     }
 
     const handler = window.PaystackPop.setup({
-      key,
+      key: publicKey,
       email: email || `donor+${Date.now()}@example.com`,
       amount: cents,
       currency: "USD",
-      callback: function (_response: any) {
-        alert("Thank you for supporting Calmi! Your payment was processed.");
+      callback: async function (response: any) {
+        try {
+          const v = await fetch("/api/paystack/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reference: response.reference }),
+          });
+          const data = await v.json();
+          if (v.ok && (data?.data?.status === "success" || data?.status === true)) {
+            alert("Thank you for supporting Calmi! Your payment was verified.");
+          } else {
+            alert("Payment received but verification failed. We'll review this shortly.");
+          }
+        } catch (e) {
+          alert("Payment received. Verification could not be completed right now.");
+        }
       },
-      onClose: function () {
-        // noop
-      },
+      onClose: function () {},
     });
     handler.openIframe();
   };
@@ -66,18 +89,12 @@ export default function Donate({ defaultEmail = "" }: { defaultEmail?: string })
           <input type="email" className="mt-1 w-full px-3 py-2 rounded-lg border bg-background" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
         </div>
         <div className="flex gap-2 md:justify-end">
-          <button onClick={pay} className="h-10 px-4 rounded-lg text-white bg-primary hover:brightness-110">Donate</button>
+          <button onClick={pay} disabled={!publicKey} className={`h-10 px-4 rounded-lg text-white ${publicKey ? "bg-primary hover:brightness-110" : "bg-muted text-muted-foreground cursor-not-allowed"}`}>Donate</button>
         </div>
       </div>
-
-      <div className="mt-4">
-        <label className="text-sm">Paystack Public Key</label>
-        <div className="flex gap-2 mt-1">
-          <input type="text" className="flex-1 px-3 py-2 rounded-lg border bg-background" value={key} onChange={(e) => setKey(e.target.value)} placeholder="pk_test_..." />
-          <button onClick={save} className="px-3 py-2 rounded-lg border hover:bg-secondary">Save</button>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">Stored locally only. Required to process payments via Paystack.</p>
-      </div>
+      {!publicKey && (
+        <p className="mt-3 text-xs text-muted-foreground">Payments unavailable: server is missing PAYSTACK_PUBLIC_KEY. Developer action required.</p>
+      )}
     </section>
   );
 }
