@@ -23,6 +23,8 @@ export function createServer() {
   app.get("/api/demo", handleDemo);
 
   app.post("/api/ai-chat", handleAiChat);
+  app.get("/api/public-config", handlePublicConfig);
+  app.post("/api/paystack/verify", verifyPaystack);
 
   return app;
 }
