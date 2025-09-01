@@ -16,9 +16,8 @@ export default function Donate({ defaultEmail = "" }: { defaultEmail?: string })
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("/api/public-config");
-        const j = await r.json();
-        setPublicKey(j?.paystackPublicKey || null);
+        const [publicKey, setPublicKey] = useState<string | null>("pk_test_142d9de331100ce1a3d48e9f09e17377e1d3ead0"); // Replace with your Paystack public key
+
         if (!j?.paystackPublicKey) {
           console.warn("Calmi: PAYSTACK_PUBLIC_KEY is not configured on the server.");
         }
