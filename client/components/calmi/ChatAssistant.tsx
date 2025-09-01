@@ -76,6 +76,8 @@ export default function ChatAssistant() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [creativity, setCreativity] = useState(0.8);
+  const [inputMode, setInputMode] = useState<"text" | "voice">("text");
 
   const { supported: sttSupported, listening, start, stop, getResult } = useSpeechRecognition();
 
@@ -93,7 +95,7 @@ export default function ChatAssistant() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: userMsg.text, history: messages.map(({ role, text }) => ({ role, content: text })) }),
+        body: JSON.stringify({ message: userMsg.text, history: messages.map(({ role, text }) => ({ role, content: text })), temperature: creativity, input_mode: inputMode }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || "Failed");
@@ -113,14 +115,15 @@ export default function ChatAssistant() {
 
   const onMicClick = async () => {
     if (!sttSupported) return;
-    if (!listening) start();
-    else stop();
+    if (!listening) { setInputMode("voice"); start(); }
+    else { stop(); }
   };
 
   useEffect(() => {
     if (!listening) {
       const result = getResult();
       if (result) setInput((v) => (v ? v + " " : "") + result);
+      setInputMode("text");
     }
   }, [listening]);
 
@@ -129,10 +132,14 @@ export default function ChatAssistant() {
     <section id="chat" className="rounded-2xl bg-white/70 dark:bg-white/5 backdrop-blur border p-4 md:p-6 shadow-sm">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h2 className="text-xl md:text-2xl font-semibold text-primary">AI Chat Assistant</h2>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-3 text-xs">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input type="checkbox" checked={ttsEnabled} onChange={(e) => setTtsEnabled(e.target.checked)} />
             <span className="text-muted-foreground">Speak replies</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="text-muted-foreground">Creativity</span>
+            <input type="range" min={0} max={1.3} step={0.05} value={creativity} onChange={(e) => setCreativity(Number(e.target.value))} />
           </label>
         </div>
       </div>
