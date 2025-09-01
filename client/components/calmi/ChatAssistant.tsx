@@ -7,7 +7,6 @@ interface Message {
   ts: number;
 }
 
-const HF_TOKEN_STORAGE_KEY = "calmi_hf_token";
 
 function useSpeechRecognition() {
   const [listening, setListening] = useState(false);
@@ -65,7 +64,6 @@ export default function ChatAssistant() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(true);
-  const [hfKey, setHfKey] = useState<string>(() => localStorage.getItem(HF_TOKEN_STORAGE_KEY) || "");
 
   const { supported: sttSupported, listening, start, stop, getResult } = useSpeechRecognition();
 
@@ -82,7 +80,6 @@ export default function ChatAssistant() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(hfKey ? { "x-hf-key": hfKey } : {}),
         },
         body: JSON.stringify({ message: userMsg.text, history: messages.map(({ role, text }) => ({ role, content: text })) }),
       });
@@ -95,7 +92,7 @@ export default function ChatAssistant() {
       const errText = e?.message || "Something went wrong";
       setMessages((m) => [
         ...m,
-        { id: crypto.randomUUID(), role: "assistant", text: `I couldn't reach the AI service. ${errText}. If you have a Hugging Face API key, add it below.`, ts: Date.now() },
+        { id: crypto.randomUUID(), role: "assistant", text: `I couldn't reach the AI service. Please try again later.`, ts: Date.now() },
       ]);
     } finally {
       setLoading(false);
@@ -115,9 +112,6 @@ export default function ChatAssistant() {
     }
   }, [listening]);
 
-  const saveKey = () => {
-    localStorage.setItem(HF_TOKEN_STORAGE_KEY, hfKey.trim());
-  };
 
   return (
     <section id="chat" className="rounded-2xl bg-white/70 dark:bg-white/5 backdrop-blur border p-4 md:p-6 shadow-sm">
@@ -170,21 +164,7 @@ export default function ChatAssistant() {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-2">
-        <div>
-          <label className="text-sm text-muted-foreground">Hugging Face API Key</label>
-          <div className="flex gap-2 mt-1">
-            <input
-              type="password"
-              className="flex-1 px-3 py-2 rounded-lg border bg-white/70 dark:bg-background"
-              placeholder="hf_..."
-              value={hfKey}
-              onChange={(e) => setHfKey(e.target.value)}
-            />
-            <button onClick={saveKey} className="px-3 py-2 rounded-lg border hover:bg-secondary">Save</button>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">Stored locally only. Used to call Hugging Face securely via our server proxy.</p>
-        </div>
+      <div className="mt-4">
         <div className="text-xs text-muted-foreground p-3 rounded-lg border bg-background">
           Tips: For immediate calm, try a 4-7-8 breath. If you may be in danger, contact local emergency services or a helpline below.
         </div>
