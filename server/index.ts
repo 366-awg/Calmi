@@ -26,5 +26,8 @@ export function createServer() {
   app.get("/api/public-config", handlePublicConfig);
   app.post("/api/paystack/verify", verifyPaystack);
 
+  // Webhook: use raw body for signature verification
+  app.post("/api/paystack/webhook", express.raw({ type: "*/*" }), (await import("./routes/paystack-webhook")).handlePaystackWebhook);
+
   return app;
 }
