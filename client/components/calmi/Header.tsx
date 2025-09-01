@@ -8,7 +8,6 @@ export default function Header() {
         </a>
         <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
           <a href="#chat" className="hover:text-primary">Chat</a>
-          <a href="#music" className="hover:text-primary">Music</a>
           <a href="#breathing" className="hover:text-primary">Breathing</a>
           <a href="#donate" className="hover:text-primary">Donate</a>
           <a href="#hotlines" className="hover:text-primary">Hotlines</a>
