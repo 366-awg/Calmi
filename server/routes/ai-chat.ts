@@ -33,11 +33,11 @@ export const handleAiChat: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: "Missing 'message' in request body" });
     }
 
-    const token = (req.headers["x-hf-key"] as string) || process.env.HF_API_KEY;
-    if (!token) {
-      return res.status(400).json({
+    const token = process.env.HUGGING_FACE_API_KEY || (req.headers["x-hf-key"] as string);
+    if (!process.env.HUGGING_FACE_API_KEY && !token) {
+      return res.status(500).json({
         error:
-          "Missing Hugging Face API key. Provide 'x-hf-key' header or set HF_API_KEY server env.",
+          "Calmi server is missing HUGGING_FACE_API_KEY. Set it as an environment variable on the server.",
       });
     }
 
